@@ -15,6 +15,67 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Database initialization endpoint
+app.post('/api/init-db', async (req, res) => {
+  try {
+    // Create vine_products table
+    await query(`
+      CREATE TABLE IF NOT EXISTS vine_products (
+        id SERIAL PRIMARY KEY,
+        asin TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        brand TEXT,
+        category TEXT,
+        etv REAL NOT NULL,
+        rating REAL,
+        review_deadline TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        quality_rating TEXT,
+        tax_liability REAL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create inventory_items table
+    await query(`
+      CREATE TABLE IF NOT EXISTS inventory_items (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        sku TEXT UNIQUE,
+        barcode TEXT UNIQUE,
+        brand TEXT,
+        category TEXT NOT NULL,
+        subcategory TEXT,
+        current_stock INTEGER DEFAULT 0,
+        reorder_level INTEGER DEFAULT 10,
+        unit_cost REAL,
+        selling_price REAL,
+        supplier TEXT,
+        location TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes
+    await query('CREATE INDEX IF NOT EXISTS idx_vine_status ON vine_products(status)');
+    await query('CREATE INDEX IF NOT EXISTS idx_vine_deadline ON vine_products(review_deadline)');
+    await query('CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory_items(category)');
+
+    res.json({ 
+      status: 'success', 
+      message: 'Database initialized successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Database initialization error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== VINE ENDPOINTS ====================
 
 app.get('/api/vine', async (req, res) => {
